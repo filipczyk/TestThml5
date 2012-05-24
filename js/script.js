@@ -7,9 +7,13 @@ function Shape(x, y, w, h, fill) {
     // This is a very simple and unsafe constructor.
     // All we're doing is checking if the values exist.
     // "x || 0" just means "if there is a value for x, use that. Otherwise use 0."
+    //x axis
     this.x = x || 0;
+    //y axis
     this.y = y || 0;
+    //shape with
     this.w = w || 1;
+    //shape height
     this.h = h || 1;
     this.fill = fill || '#AAAAAA';
 }
@@ -20,13 +24,23 @@ Shape.prototype.draw = function(ctx) {
     ctx.fillRect(this.x, this.y, this.w, this.h);
 }
 
+// Determine if a point is inside the shape's bounds
+Shape.prototype.contains = function(mx, my) {
+    // All we have to do is make sure the Mouse X,Y fall in the area between
+    // the shape's X and (X + Height) and its Y and (Y + Height)
+    return  (this.x <= mx) && (this.x + this.w >= mx) &&
+        (this.y <= my) && (this.y + this.h >= my);
+}
+
 function CanvasState(canvas) {
 
     // ...
 
     // I removed some setup code to save space
     // See the full source at the end
-
+    this.canvas = canvas;
+    this.width = canvas.width;
+    this.height = canvas.height;
 
     // **** Keep track of state! ****
 
@@ -38,6 +52,22 @@ function CanvasState(canvas) {
     this.selection = null;
     this.dragoffx = 0; // See mousedown and mousemove events for explanation
     this.dragoffy = 0;
+    this.ctx=canvas.getContext('2d');
+
+    // This complicates things a little but but fixes mouse co-ordinate problems
+    // when there's a border or padding. See getMouse for more detail
+    var stylePaddingLeft, stylePaddingTop, styleBorderLeft, styleBorderTop;
+    if (document.defaultView && document.defaultView.getComputedStyle) {
+        this.stylePaddingLeft = parseInt(document.defaultView.getComputedStyle(canvas, null)['paddingLeft'], 10)      || 0;
+        this.stylePaddingTop  = parseInt(document.defaultView.getComputedStyle(canvas, null)['paddingTop'], 10)       || 0;
+        this.styleBorderLeft  = parseInt(document.defaultView.getComputedStyle(canvas, null)['borderLeftWidth'], 10)  || 0;
+        this.styleBorderTop   = parseInt(document.defaultView.getComputedStyle(canvas, null)['borderTopWidth'], 10)   || 0;
+    }
+    // Some pages have fixed-position bars (like the stumbleupon bar) at the top or left of the page
+    // They will mess up mouse coordinates and this fixes that
+    var html = document.body.parentNode;
+    this.htmlTop = html.offsetTop;
+    this.htmlLeft = html.offsetLeft;
 
     // This is an example of a closure!
     // Right here "this" means the CanvasState. But we are making events on the Canvas itself,
@@ -113,7 +143,7 @@ CanvasState.prototype.addShape = function(shape) {
 };
 
 CanvasState.prototype.clear = function() {
-
+    this.ctx.clearRect(0, 0, this.width, this.height);
 };
 
 // While draw is called as often as the INTERVAL variable demands,
